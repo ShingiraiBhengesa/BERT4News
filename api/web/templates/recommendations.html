@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+
+{% block title %}Your Recommendations - BERT4News{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="text-primary mb-1">
+                    <i class="fas fa-star me-2"></i>Your Personalized Recommendations
+                </h2>
+                <p class="text-muted mb-0">
+                    Based on your interests: 
+                    {% for topic in user_topics %}
+                        <span class="badge bg-info me-1">{{ topic.title() }}</span>
+                    {% endfor %}
+                </p>
+            </div>
+            <button class="btn btn-outline-primary" onclick="refreshRecommendations()">
+                <i class="fas fa-sync-alt me-1"></i>Refresh
+            </button>
+        </div>
+
+        <!-- Controls -->
+        <div class="card bg-secondary border-primary mb-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <label for="recommendationCount" class="form-label">Number of Articles</label>
+                        <select class="form-select" id="recommendationCount">
+                            <option value="5">5 articles</option>
+                            <option value="10" selected>10 articles</option>
+                            <option value="15">15 articles</option>
+                            <option value="20">20 articles</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="diversityControl" class="form-label">
+                            Diversity: <span id="diversityValue">{{ "%.1f"|format(diversity_preference) }}</span>
+                        </label>
+                        <input type="range" class="form-range" id="diversityControl" 
+                               min="0" max="1" step="0.1" value="{{ diversity_preference }}">
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <button class="btn btn-primary" onclick="updateRecommendations()">
+                            <i class="fas fa-magic me-1"></i>Update
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommendations Container -->
+        <div id="recommendationsContainer">
+            <!-- Recommendations will be loaded here -->
+        </div>
+
+        <!-- Load More Button -->
+        <div class="text-center mt-4">
+            <button class="btn btn-outline-primary" id="loadMoreBtn" style="display: none;">
+                <i class="fas fa-plus me-1"></i>Load More Articles
+            </button>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- User Stats -->
+        <div class="card bg-secondary border-primary mb-4">
+            <div class="card-header bg-primary">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Your Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Articles Read:</span>
+                    <span class="badge bg-success" id="articlesRead">-</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Liked Articles:</span>
+                    <span class="badge bg-info" id="articlesLiked">-</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Recommendation Score:</span>
+                    <span class="badge bg-warning" id="recScore">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card bg-secondary border-primary mb-4">
+            <div class="card-header bg-primary">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-info btn-sm" onclick="showOnlyLikedSources()">
+                        <i class="fas fa-heart me-1"></i>Show Preferred Sources
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="exploreNewTopics()">
+                        <i class="fas fa-compass me-1"></i>Explore New Topics
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="resetRecommendations()">
+                        <i class="fas fa-undo me-1"></i>Reset Preferences
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trending Topics -->
+        <div class="card bg-secondary border-primary">
+            <div class="card-header bg-primary">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-fire me-2"></i>Trending Now
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-1">
+                    <span class="badge bg-danger">#AI</span>
+                    <span class="badge bg-warning">#Politics</span>
+                    <span class="badge bg-success">#Climate</span>
+                    <span class="badge bg-info">#Tech</span>
+                    <span class="badge bg-secondary">#Economy</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Article Modal -->
+<div class="modal fade" id="articleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark border-primary">
+            <div class="modal-header bg-primary">
+                <h5 class="modal-title" id="articleModalTitle">Article Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="articleModalBody">
+                <!-- Article content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a class="btn btn-primary" id="readFullArticle" href="#" target="_blank">
+                    <i class="fas fa-external-link-alt me-1"></i>Read Full Article
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentRecommendations = [];
+let userStats = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize diversity slider
+    const diversityControl = document.getElementById('diversityControl');
+    const diversityValue = document.getElementById('diversityValue');
+    
+    diversityControl.addEventListener('input', function() {
+        diversityValue.textContent = parseFloat(this.value).toFixed(1);
+    });
+    
+    // Load initial recommendations
+    loadRecommendations();
+});
+
+function loadRecommendations() {
+    const loadingHtml = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h5>Analyzing your preferences...</h5>
+            <p class="text-muted">Please wait while we generate personalized recommendations</p>
+        </div>
+    `;
+    
+    document.getElementById('recommendationsContainer').innerHTML = loadingHtml;
+    
+    const requestData = {
+        k: parseInt(document.getElementById('recommendationCount').value),
+        diversity: parseFloat(document.getElementById('diversityControl').value),
+        allow_new_sources: true
+    };
+    
+    fetch('/api/recommend', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.recommendations) {
+            currentRecommendations = data.recommendations;
+            displayRecommendations(data.recommendations);
+            
+            // Show fallback message if used
+            if (data.fallback_used) {
+                showAlert('Using fallback recommendations. Interact with articles to improve personalization!', 'info');
+            }
+        } else {
+            showAlert(data.error || 'Failed to load recommendations', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Failed to load recommendations. Please try again.', 'error');
+        document.getElementById('recommendationsContainer').innerHTML = '<p class="text-muted text-center py-4">Failed to load recommendations.</p>';
+    });
+}
+
+function displayRecommendations(recommendations) {
+    const container = document.getElementById('recommendationsContainer');
+    
+    if (recommendations.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h5>No recommendations found</h5>
+                <p class="text-muted">Try adjusting your preferences or check back later.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const html = recommendations.map((article, index) => `
+        <div class="card bg-secondary border-primary mb-3 article-card" data-article-id="${article.article_id}">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-9">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="flex-grow-1">
+                                <h5 class="card-title text-primary mb-1">${article.title}</h5>
+                                <div class="text-muted small mb-2">
+                                    <i class="fas fa-newspaper me-1"></i>${article.source}
+                                    <span class="mx-2">•</span>
+                                    <i class="fas fa-clock me-1"></i>${formatDate(article.published_at)}
+                                    <span class="mx-2">•</span>
+                                    <span class="badge bg-info badge-sm">${article.method}</span>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-success">${(article.score * 100).toFixed(0)}% match</span>
+                            </div>
+                        </div>
+                        
+                        <p class="card-text text-light mb-2">${truncateText(article.summary, 150)}</p>
+                        
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-lightbulb me-1"></i>${article.explanation}
+                            </small>
+                        </div>
+                        
+                        ${article.topics ? `
+                            <div class="mb-2">
+                                ${article.topics.split(',').map(topic => 
+                                    `<span class="badge bg-outline-primary me-1">${topic.trim()}</span>`
+                                ).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="col-md-3 text-end">
+                        <div class="btn-group-vertical d-grid gap-1">
+                            <button class="btn btn-sm btn-outline-success" 
+                                    onclick="recordFeedback(${article.article_id}, 'like', this)">
+                                <i class="fas fa-thumbs-up me-1"></i>Like
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" 
+                                    onclick="showArticleModal(${article.article_id})">
+                                <i class="fas fa-eye me-1"></i>Preview
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" 
+                                    onclick="recordFeedback(${article.article_id}, 'more_like_this', this)">
+                                <i class="fas fa-plus me-1"></i>More Like This
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" 
+                                    onclick="recordFeedback(${article.article_id}, 'dislike', this)">
+                                <i class="fas fa-thumbs-down me-1"></i>Not Interested
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    container.innerHTML = html;
+}
+
+function recordFeedback(articleId, event, button) {
+    // Visual feedback
+    button.classList.add('active');
+    button.disabled = true;
+    
+    const data = {
+        article_id: articleId,
+        event: event,
+        dwell_time: Math.floor(Math.random() * 30) + 10 // Simulate dwell time
+    };
+    
+    fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Show feedback message
+            const messages = {
+                'like': 'Thanks for the feedback! We\'ll show you more articles like this.',
+                'dislike': 'Got it! We\'ll avoid similar content in the future.',
+                'more_like_this': 'Great! Looking for more articles on this topic.',
+                'hide_source': 'This source will be hidden from your recommendations.'
+            };
+            showAlert(messages[event] || 'Feedback recorded!', 'success');
+            
+            // If it was "more like this", refresh recommendations
+            if (event === 'more_like_this') {
+                setTimeout(() => loadRecommendations(), 1000);
+            }
+        } else {
+            showAlert('Failed to record feedback', 'warning');
+            button.classList.remove('active');
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        button.classList.remove('active');
+        button.disabled = false;
+    });
+}
+
+function showArticleModal(articleId) {
+    const modal = new bootstrap.Modal(document.getElementById('articleModal'));
+    const modalTitle = document.getElementById('articleModalTitle');
+    const modalBody = document.getElementById('articleModalBody');
+    const readFullLink = document.getElementById('readFullArticle');
+    
+    // Show loading
+    modalTitle.textContent = 'Loading...';
+    modalBody.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+    modal.show();
+    
+    fetch(`/api/article/${articleId}`)
+        .then(response => response.json())
+        .then(article => {
+            modalTitle.textContent = article.title;
+            modalBody.innerHTML = `
+                <div class="mb-3">
+                    <div class="text-muted small mb-2">
+                        <i class="fas fa-newspaper me-1"></i>${article.source}
+                        <span class="mx-2">•</span>
+                        <i class="fas fa-clock me-1"></i>${formatDate(article.published_at)}
+                        <span class="mx-2">•</span>
+                        <i class="fas fa-user me-1"></i>${article.authors}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    ${article.summary}
+                </div>
+                ${article.content ? `
+                    <div class="mb-3">
+                        <h6>Full Content:</h6>
+                        <div class="text-muted" style="max-height: 300px; overflow-y: auto;">
+                            ${article.content}
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+            
+            readFullLink.href = article.url || '#';
+            if (!article.url) {
+                readFullLink.style.display = 'none';
+            }
+            
+            // Record view
+            recordFeedback(articleId, 'click', null);
+        })
+        .catch(error => {
+            modalBody.innerHTML = '<p class="text-danger">Failed to load article details.</p>';
+        });
+}
+
+function refreshRecommendations() {
+    loadRecommendations();
+}
+
+function updateRecommendations() {
+    loadRecommendations();
+}
+
+function resetRecommendations() {
+    if (confirm('This will reset your preferences. Are you sure?')) {
+        window.location.href = '/';
+    }
+}
+
+function exploreNewTopics() {
+    // Increase diversity temporarily
+    document.getElementById('diversityControl').value = 0.8;
+    document.getElementById('diversityValue').textContent = '0.8';
+    updateRecommendations();
+}
+
+function showOnlyLikedSources() {
+    showAlert('Feature coming soon! We\'ll remember your preferred sources.', 'info');
+}
+
+// Utility functions
+function formatDate(dateString) {
+    if (!dateString) return 'Unknown';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch {
+        return 'Unknown';
+    }
+}
+
+function truncateText(text, maxLength) {
+    if (!text || text.length <= maxLength) return text || '';
+    return text.substring(0, maxLength) + '...';
+}
+</script>
+{% endblock %}

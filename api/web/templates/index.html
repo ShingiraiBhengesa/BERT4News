@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}BERT4News - Welcome{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Hero Section -->
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-primary mb-3">
+                <i class="fas fa-robot me-3"></i>Welcome to BERT4News
+            </h1>
+            <p class="lead text-light mb-4">
+                Discover personalized news recommendations powered by advanced machine learning
+            </p>
+            <div class="d-flex justify-content-center mb-4">
+                <div class="badge bg-info me-2">Collaborative Filtering</div>
+                <div class="badge bg-success me-2">Content Analysis</div>
+                <div class="badge bg-warning">Hybrid AI</div>
+            </div>
+        </div>
+
+        <!-- Onboarding Card -->
+        <div class="card bg-secondary border-primary mb-4">
+            <div class="card-header bg-primary">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-cog me-2"></i>Customize Your Experience
+                </h3>
+            </div>
+            <div class="card-body">
+                <p class="text-light mb-4">
+                    Select the topics you're interested in to get started with personalized recommendations:
+                </p>
+                
+                <!-- Topic Selection -->
+                <form id="onboardingForm">
+                    <div class="row">
+                        {% for topic in topics %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="topics" 
+                                       value="{{ topic }}" id="topic-{{ topic }}">
+                                <label class="form-check-label text-capitalize" for="topic-{{ topic }}">
+                                    <i class="fas fa-{{ get_topic_icon(topic) }} me-2"></i>{{ topic }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Advanced Options -->
+                    <div class="mt-4">
+                        <button class="btn btn-outline-info btn-sm" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#advancedOptions">
+                            <i class="fas fa-sliders-h me-1"></i>Advanced Options
+                        </button>
+                        
+                        <div class="collapse mt-3" id="advancedOptions">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="diversitySlider" class="form-label">
+                                        <i class="fas fa-balance-scale me-1"></i>Diversity Level
+                                    </label>
+                                    <input type="range" class="form-range" id="diversitySlider" 
+                                           min="0" max="1" step="0.1" value="0.1">
+                                    <small class="text-muted">Higher = more varied topics</small>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" 
+                                               id="allowNewSources" checked>
+                                        <label class="form-check-label" for="allowNewSources">
+                                            <i class="fas fa-newspaper me-1"></i>Include new sources
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-magic me-2"></i>Get My Recommendations
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card bg-dark border-info h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-users fa-2x text-info mb-3"></i>
+                        <h5>Collaborative Filtering</h5>
+                        <p class="small text-muted">
+                            Recommendations based on users with similar preferences
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-3">
+                <div class="card bg-dark border-success h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-brain fa-2x text-success mb-3"></i>
+                        <h5>Content Analysis</h5>
+                        <p class="small text-muted">
+                            AI-powered text analysis to understand article content
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-3">
+                <div class="card bg-dark border-warning h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-chart-line fa-2x text-warning mb-3"></i>
+                        <h5>Adaptive Learning</h5>
+                        <p class="small text-muted">
+                            System learns from your interactions to improve over time
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('onboardingForm');
+    const diversitySlider = document.getElementById('diversitySlider');
+    
+    // Update diversity value display
+    diversitySlider.addEventListener('input', function() {
+        const value = parseFloat(this.value);
+        const label = value < 0.3 ? 'Similar content' : value > 0.7 ? 'Very diverse' : 'Balanced';
+        this.nextElementSibling.textContent = `${label} (${value})`;
+    });
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const selectedTopics = Array.from(document.querySelectorAll('input[name="topics"]:checked'))
+            .map(cb => cb.value);
+        
+        if (selectedTopics.length === 0) {
+            showAlert('Please select at least one topic of interest.', 'warning');
+            return;
+        }
+        
+        const preferences = {
+            topics: selectedTopics,
+            diversity: parseFloat(diversitySlider.value),
+            allow_new_sources: document.getElementById('allowNewSources').checked
+        };
+        
+        // Show loading
+        const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+        loadingModal.show();
+        
+        fetch('/onboarding', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(preferences)
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingModal.hide();
+            if (data.success) {
+                window.location.href = data.redirect;
+            } else {
+                showAlert(data.error || 'Failed to save preferences', 'error');
+            }
+        })
+        .catch(error => {
+            loadingModal.hide();
+            console.error('Error:', error);
+            showAlert('An error occurred. Please try again.', 'error');
+        });
+    });
+});
+
+// Helper function to get topic icons (placeholder - would need actual implementation)
+function getTopicIcon(topic) {
+    const icons = {
+        'technology': 'laptop',
+        'politics': 'landmark',
+        'business': 'briefcase',
+        'sports': 'futbol',
+        'health': 'heartbeat',
+        'science': 'flask',
+        'entertainment': 'film',
+        'finance': 'chart-line',
+        'world': 'globe',
+        'lifestyle': 'leaf'
+    };
+    return icons[topic] || 'newspaper';
+}
+</script>
+{% endblock %}
