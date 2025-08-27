@@ -86,58 +86,6 @@ graph TB
 - **Bias Detection**: Popularity bias and fairness metrics
 - **A/B Testing Support**: Model comparison and validation
 
-## 🗂️ Project Structure
-
-```
-BERT4News/
-├── README.md                 # This file
-├── requirements.txt          # Python dependencies
-├── Makefile                 # Build and deployment commands
-├── .env.example             # Environment configuration template
-│
-├── data/                    # Data storage
-│   ├── raw/                # Original datasets (CSV files)
-│   ├── processed/          # Cleaned and preprocessed data
-│   └── artifacts/          # Trained models and indices
-│
-├── recsys/                 # Core recommendation system
-│   ├── __init__.py
-│   ├── config.py           # Configuration settings
-│   ├── db.py              # Database operations
-│   │
-│   ├── utils/             # Utility functions
-│   │   ├── __init__.py
-│   │   └── text.py        # Text processing utilities
-│   │
-│   ├── models/            # ML models
-│   │   ├── __init__.py
-│   │   ├── content_tfidf.py    # TF-IDF content model
-│   │   ├── cf_surprise.py      # Collaborative filtering
-│   │   └── hybrid.py          # Hybrid recommender
-│   │
-│   └── eval/              # Evaluation metrics
-│       ├── __init__.py
-│       └── metrics.py     # Comprehensive evaluation
-│
-├── scripts/               # Utility scripts
-│   ├── ingest.py         # Data ingestion
-│   ├── train_cf.py       # Train collaborative filtering
-│   ├── build_tfidf.py    # Build TF-IDF index
-│   └── offline_eval.py   # Model evaluation
-│
-└── api/                  # Web application
-    ├── app.py           # Flask application
-    ├── wsgi.py         # Production WSGI entry point
-    └── web/            # Frontend assets
-        ├── templates/   # Jinja2 HTML templates
-        │   ├── base.html
-        │   ├── index.html
-        │   └── recommendations.html
-        └── static/     # CSS, JavaScript, images
-            ├── styles.css
-            └── main.js
-```
-
 ## 🛠️ Technical Implementation
 
 ### Database Schema
@@ -381,11 +329,6 @@ Each recommendation includes explanations:
 - **New Articles**: Content-only recommendations + exploration bonus
 - **New Sources**: Quality priors and gradual introduction
 
-### Diversity & Fairness
-- **Source Diversity**: Maximum articles per source
-- **Topic Diversity**: Balanced topic distribution
-- **Bias Mitigation**: Popularity penalty and fairness constraints
-
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -404,40 +347,3 @@ Each recommendation includes explanations:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- **Surprise**: For collaborative filtering algorithms
-- **scikit-learn**: For TF-IDF and machine learning utilities
-- **Flask**: For the web framework
-- **FAISS**: For efficient similarity search
-- **LightGBM**: For learning-to-rank models
-
-## 📞 Contact
-
-- **Author**: Your Name
-- **Email**: your.email@example.com
-- **Project Link**: https://github.com/yourusername/bert4news
-
----
-
-## 🎬 Demo
-
-Try the live demo: [https://bert4news-demo.herokuapp.com](https://bert4news-demo.herokuapp.com)
-
-### Demo Features
-- 📰 1,000+ sample articles across 10 topics
-- 👥 200 synthetic users with realistic interaction patterns
-- 🎯 Personalized recommendations based on topic preferences
-- 📊 Real-time feedback and adaptive learning
-- 🎨 Modern dark-themed responsive UI
-
-### Quick Demo Script
-1. Visit the homepage and select topics of interest
-2. View personalized recommendations
-3. Interact with articles (like, dislike, more like this)
-4. See how recommendations adapt to your feedback
-5. Explore diversity controls and explanation features
-
----
-
-**Built with ❤️ for the future of personalized news discovery**
