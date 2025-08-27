@@ -1,8 +1,7 @@
-# BERT4News: Advanced Personalized News Recommendation System
+# BERT4News: Personalized News Recommendation System
 
-![BERT4News Logo](https://via.placeholder.com/400x100/1e3a8a/ffffff?text=BERT4News)
 
-A state-of-the-art news recommendation system combining collaborative filtering, content-based filtering, and advanced machine learning techniques to deliver personalized news experiences.
+A news recommendation system combining collaborative filtering, content-based filtering, and advanced machine learning techniques to deliver personalized news experiences.
 
 ## 🚀 Quick Start
 
